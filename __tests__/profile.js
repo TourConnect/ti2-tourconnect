@@ -21,14 +21,29 @@ describe('profile', () => {
     expect(Object.keys(retVal)).toEqual(expect.arrayContaining(['name', 'description', 'website', 'telephone']));
   });
   it('should be able to update a profile', async () => {
+    const { address } = faker;
     const nuData = {
       name: faker.company.companyName(),
       description: faker.lorem.paragraph(),
+      website: faker.internet.url(),
+      address: {
+        country: address.country(),
+        state: address.state(),
+        city: address.city(),
+        postalCode: address.zipCode(),
+        address1: address.streetAddress(),
+        gps: {
+          lat: address.latitude(),
+          lng: address.longitude(),
+        },
+      },
     };
     const retVal = await app.updateProfile({ payload: nuData, token: validKey });
     expect(retVal).toBe(true);
     const newVal = await app.getProfile(validKey);
     expect(newVal.name).toBe(nuData.name);
     expect(newVal.description).toBe(nuData.description);
+    expect(newVal.website).toBe(nuData.website);
+    expect(newVal.address).toEqual(expect.objectContaining(nuData.address));
   });
 });
