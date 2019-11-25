@@ -3,30 +3,14 @@ const request = require('request-promise');
 const cheerio = require('cheerio');
 const assert = require('assert');
 
-const { env: {
-  'ti2-tourconnect-apiUrl': apiUrl,
-  'ti2-tourconnect-publicUrl': publicUrl,
-  'ti2-tourconnect-appToken': appToken,
-} } = process;
+const {
+  env: {
+    'ti2-tourconnect-apiUrl': apiUrl,
+    'ti2-tourconnect-appToken': appToken,
+  },
+} = process;
 
 const createUser = async () => {
-  const apiConsumerPayload = {
-    appName: faker.commerce.productName(),
-    authorizations: [
-      '/api/company',
-      '/api/contract/:contractId',
-      '/api/location',
-      '/api/product',
-    ],
-    email: faker.internet.email().toLowerCase(),
-  };
-  const apiUserPayload = {
-    authorizations: [
-      '/api/company',
-      '/api/location',
-      '/api/product',
-    ],
-  };
   const newUserPayload = {
     companyTypeChecked: ['Hotel'],
     selectedCompanyType: 'Accommodation',
@@ -50,22 +34,21 @@ const createUser = async () => {
     body: newUserPayload,
     json: true,
   });
-  // read the user confirmation email 
+  // read the user confirmation email
   const uri = `${apiUrl}/test/readEmail/${encodeURIComponent(newUserPayload.email)}%20email-confirmation?html=true`;
   const htmlEmail = await request({
     method: 'get',
     uri,
   });
   const $ = cheerio.load(htmlEmail);
-  const confirmationEmailLink = (() => {
+  const token = (() => {
     let retVal = null;
     $('a').each((i, link) => {
       if (link.attribs.href.indexOf('signin/email/confirmation') > -1) retVal = link.attribs.href;
     });
-    return retVal.replace(`${publicUrl}`, '');
+    return retVal.split('/signin/email/confirmation/')[1].split('?')[0];
   })();
-  assert(confirmationEmailLink != null);
-  const token = confirmationEmailLink.replace('/signin/email/confirmation', '').split('/')[1].split('?')[0];
+  assert(token != null);
   // confirm the account
   const resConfirm = await request({
     method: 'put',

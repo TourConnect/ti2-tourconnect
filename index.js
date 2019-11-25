@@ -1,9 +1,11 @@
 require('dotenv').config();
 const request = require('request-promise');
 
-const { env: {
-  'ti2-tourconnect-apiUrl': apiUrl,
-} } = process;
+const {
+  env: {
+    'ti2-tourconnect-apiUrl': apiUrl,
+  },
+} = process;
 
 const getHeaders = (token) => ({
   Authorization: `Bearer ${Buffer.from(token).toString('base64')}`,
