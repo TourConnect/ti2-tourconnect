@@ -175,6 +175,7 @@ const productGet = ({ locationId }) => `{
   locations (locationId: "${locationId}"){
     locationId
     products {
+      productId,
       productName, productType, productCode, description, notes, coverImageUrl,
       interconnectingRooms, amenities, roomCountInfo { value, unit },
       roomSizeInfo { value, unit }, totalMaxPassengers, totalMinPassengers,
@@ -201,6 +202,8 @@ const getProducts = async ({ token, locationId }) => {
     body: productGet({ locationId }),
     json: true,
   });
+  return resp.companyProfile.locations
+    .filter(({ locationId: locId }) => locId === locationId)[0].products;
 };
 
 const getProduct = async ({ token, locationId, productId }) => {
@@ -215,23 +218,24 @@ const getProduct = async ({ token, locationId, productId }) => {
     body: singleGet,
     json: true,
   });
+  if (resp.companyProfile.locations.length !== 1
+    || resp.companyProfile.locations[0].products.length !== 1
+  ) return undefined;
   const {
-    body: {
-      companyProfile: {
-        locations: [
-          {
-            products: [
-              product,
-            ],
-          },
-        ],
-      },
+    companyProfile: {
+      locations: [
+        {
+          products: [
+            product,
+          ],
+        },
+      ],
     },
   } = resp;
   return product;
 };
 
-const createProduct = async ({ token, locationId, payload }) => {
+const createProduct = async ({ token, payload }) => {
   const resp = request({
     method: 'post',
     uri: `${apiUrl}/api/product`,
@@ -242,10 +246,16 @@ const createProduct = async ({ token, locationId, payload }) => {
     body: payload,
     json: true,
   });
+  return resp;
 };
 
-const updateProduct = async ({ token, locationId, productId, payload }) => {
-  const resp = await request({
+const updateProduct = async ({
+  token,
+  locationId,
+  productId,
+  payload,
+}) => {
+  await request({
     method: 'post',
     uri: `${apiUrl}/api/product`,
     headers: {
@@ -259,6 +269,7 @@ const updateProduct = async ({ token, locationId, productId, payload }) => {
     },
     json: true,
   });
+  return true;
 };
 
 module.exports = {
@@ -270,7 +281,7 @@ module.exports = {
   createLocation,
   updateLocation,
   getProducts,
-  getProducts,
+  getProduct,
   createProduct,
   updateProduct,
 };

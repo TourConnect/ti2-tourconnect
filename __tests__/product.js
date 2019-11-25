@@ -1,6 +1,11 @@
 /* global describe beforeAll it expect */
 const faker = require('faker');
 const app = require('../index');
+const {
+  createUser,
+  createApp,
+  createAppUser,
+} = require('./utils');
 
 const { env: { 'ti2-tourconnect-userTestToken': validKey } } = process;
 
@@ -58,18 +63,28 @@ describe('products', () => {
       },
     },
   };
+  let token;
   beforeAll(async () => {
     // create a new location to add products to
-    const { locationId } = await app.addProfile(testLocation);
+    const { jwt } = await createUser();
+    const appKey = await createApp();
+    token = await createAppUser({ appKey, userToken: jwt });
+    // create the test location
+    const { locationId } = await app.createLocation({ token, payload: testLocation });
     testProduct.locationId = locationId;
+    testLocation.locationId = locationId;
   });
   it('should be able to create a product', async () => {
-    const retVal = await app.addProfile(testLocation);
-    expect(Object.keys(retVal)).toEqual(expect.arrayContaining(['locationId']));
+    const retVal = await app.createProduct({
+      token,
+      locationId: testLocation.locationId,
+      payload: testProduct,
+    });
+    expect(Object.keys(retVal)).toEqual(expect.arrayContaining(['productId']));
     testProduct.productId = retVal.productId;
   });
   it('should be able to retrieve all products', async () => {
-    allProducts = await app.getProducts(validKey);
+    allProducts = await app.getProducts({ token, locationId: testProduct.locationId });
     expect(Array.isArray(allProducts)).toBe(true);
   });
   it('the new product should be on the list', async () => {
@@ -80,26 +95,34 @@ describe('products', () => {
     const retVal = await app.getProduct({
       locationId: testProduct.locationId,
       productId: testProduct.productId,
-      token: validKey,
+      token,
     });
-    expect(retVal).objectContainig(testProduct);
+    expect(retVal).toEqual(
+      expect.objectContaining(testProduct),
+    );
   });
   it('should be able to update a product', async () => {
     const nuData = {
       productName: faker.company.companyName(),
       description: faker.lorem.paragraph(),
     };
-    const retVal = await app.updateLocation({
+    const retVal = await app.updateProduct({
       locationId: testLocation.locationId,
+      productId: testProduct.productId,
       payload: nuData,
-      token: validKey,
+      token,
     });
     expect(retVal).toBe(true);
-    const updatedLocation = await app.getLocation({
-      locationId: testProduct.locationId,
+    const updatedProduct = await app.getProduct({
+      locationId: testLocation.locationId,
       productId: testProduct.productId,
-      token: validKey,
+      token,
     });
-    expect(updatedLocation).objectContainig({ ...testProduct, ...nuData });
+    expect(updatedProduct).toEqual(
+      expect.objectContaining({
+        ...testLocation,
+        ...nuData,
+      }),
+    );
   });
 });

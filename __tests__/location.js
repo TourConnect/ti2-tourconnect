@@ -50,9 +50,9 @@ describe('location', () => {
     allLocations = await app.getLocations({ token });
     expect(Array.isArray(allLocations)).toBe(true);
   });
-  it.only('the new location should be on the list', async () => {
-    expect(allLocations.map(({ locationId }) => locationId))
-      .toEqual(expect.arrayContaining([testLocation.locationId]));
+  it.only('the new product should be on the list', async () => {
+    expect(allLocations.map(({ productId }) => productId))
+      .toEqual(expect.arrayContaining([testLocation.productId]));
   });
   it.only('should be able to retrieve a location', async () => {
     const retVal = await app.getLocation({ locationId: testLocation.locationId, token });
