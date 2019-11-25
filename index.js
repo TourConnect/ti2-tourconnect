@@ -1,7 +1,9 @@
 require('dotenv').config();
 const request = require('request-promise');
 
-const { env: { 'ti2-tourconnect-apiUrl': apiUrl } } = process;
+const { env: {
+  'ti2-tourconnect-apiUrl': apiUrl,
+} } = process;
 
 const getHeaders = (token) => ({
   Authorization: `Bearer ${Buffer.from(token).toString('base64')}`,
@@ -97,8 +99,176 @@ const updateProfile = async ({ token, payload }) => {
   });
   return true;
 };
+const locationGet = `{
+  locations {
+    locationId, locationName, description,
+    address { country, state, city, postalCode, addressOne, addressTwo, loc { coordinates, type } },
+    contacts { email, fax, firstName, lastName, name, phone, type },
+    coverImageUrl, website, phone, notes, roomCount, productType  } }`;
+const getLocations = async ({ token }) => {
+  const resp = await request({
+    method: 'post',
+    uri:`${apiUrl}/api/company`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: locationGet,
+    json: true,
+  });
+  const { companyProfile: { locations } } = resp;
+  return locations;
+};
+
+const getLocation = async ({ token, locationId }) => {
+  const res = await request({
+    method: 'post',
+    uri: `${apiUrl}/api/company`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: locationGet.replace(
+      'locations {',
+      `locations (locationId: "${locationId}") {`,
+    ),
+    json: true,
+  });
+  const { companyProfile: { locations } } = res;
+  return locations[0];
+};
+
+const createLocation = async ({ token, payload }) => {
+  const resp = await request({
+    method: 'post',
+    uri: `${apiUrl}/api/location`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: payload,
+    json: true,
+  });
+  return ({ locationId: resp.location._id });
+};
+
+const updateLocation = async ({ token, locationId, payload }) => {
+  await request({
+    method: 'post',
+    uri: `${apiUrl}/api/location`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: {
+      ...payload,
+      locationId,
+    },
+    json: true,
+  });
+  return true;
+};
+
+const productGet = ({ locationId }) => `{
+  locations (locationId: "${locationId}"){
+    locationId
+    products {
+      productName, productType, productCode, description, notes, coverImageUrl,
+      interconnectingRooms, amenities, roomCountInfo { value, unit },
+      roomSizeInfo { value, unit }, totalMaxPassengers, totalMinPassengers,
+      tourDuration { value, unit }, tourDurationDoesNotApply,
+      productInfo { include, exclude, whatToBring },
+      bedsAndSofas {
+        isApartment,
+        rooms {
+         count,
+         bedType,
+         other
+        }
+      },
+    }
+  }}`;
+const getProducts = async ({ token, locationId }) => {
+  const resp = await request({
+    method: 'post',
+    uri: `${apiUrl}/api/company`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: productGet({ locationId }),
+    json: true,
+  });
+};
+
+const getProduct = async ({ token, locationId, productId }) => {
+  const singleGet = productGet({ locationId }).replace('products ', `products (productId: "${productId}")`);
+  const resp = await request({
+    method: 'post',
+    uri: `${apiUrl}/api/company`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: singleGet,
+    json: true,
+  });
+  const {
+    body: {
+      companyProfile: {
+        locations: [
+          {
+            products: [
+              product,
+            ],
+          },
+        ],
+      },
+    },
+  } = resp;
+  return product;
+};
+
+const createProduct = async ({ token, locationId, payload }) => {
+  const resp = request({
+    method: 'post',
+    uri: `${apiUrl}/api/product`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: payload,
+    json: true,
+  });
+};
+
+const updateProduct = async ({ token, locationId, productId, payload }) => {
+  const resp = await request({
+    method: 'post',
+    uri: `${apiUrl}/api/product`,
+    headers: {
+      ...getHeaders(token),
+      'Content-Type': 'application/json',
+    },
+    body: {
+      locationId,
+      productId,
+      payload,
+    },
+    json: true,
+  });
+};
+
 module.exports = {
   validateToken,
   getProfile,
   updateProfile,
+  getLocations,
+  getLocation,
+  createLocation,
+  updateLocation,
+  getProducts,
+  getProducts,
+  createProduct,
+  updateProduct,
 };

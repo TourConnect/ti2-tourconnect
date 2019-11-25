@@ -1,8 +1,11 @@
-/* global describe it expect */
+/* global describe it expect beforeAll */
 const faker = require('faker');
 const app = require('../index');
-
-const { env: { 'ti2-tourconnect-userTestToken': validKey } } = process;
+const {
+  createUser,
+  createApp,
+  createAppUser,
+} = require('./utils');
 
 describe('location', () => {
   const testLocation = {
@@ -32,24 +35,34 @@ describe('location', () => {
     },
   };
   let allLocations;
-  it('should be able to create a location', async () => {
-    const retVal = await app.addProfile(testLocation);
+  let token;
+  beforeAll(async () => {
+    const { jwt } = await createUser();
+    const appKey = await createApp();
+    token = await createAppUser({ appKey, userToken: jwt });
+  });
+  it.only('should be able to create a location', async () => {
+    const retVal = await app.createLocation({ token, payload: testLocation });
     expect(Object.keys(retVal)).toEqual(expect.arrayContaining(['locationId']));
     testLocation.locationId = retVal.locationId;
   });
-  it('should be able to retrieve all locations', async () => {
-    allLocations = await app.getProfile(validKey);
+  it.only('should be able to retrieve all locations', async () => {
+    allLocations = await app.getLocations({ token });
     expect(Array.isArray(allLocations)).toBe(true);
   });
-  it('the new location should be on the list', async () => {
+  it.only('the new location should be on the list', async () => {
     expect(allLocations.map(({ locationId }) => locationId))
       .toEqual(expect.arrayContaining([testLocation.locationId]));
   });
-  it('should be able to retrieve a location', async () => {
-    const retVal = await app.getLocation({ locationId: testLocation.locationId, token: validKey });
-    expect(retVal).objectContainig(testLocation);
+  it.only('should be able to retrieve a location', async () => {
+    const retVal = await app.getLocation({ locationId: testLocation.locationId, token });
+    expect(retVal).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining(testLocation),
+      ]),
+    );
   });
-  it('should be able to update a location', async () => {
+  it.only('should be able to update a location', async () => {
     const nuData = {
       locationName: faker.company.companyName(),
       description: faker.lorem.paragraph(),
@@ -57,13 +70,20 @@ describe('location', () => {
     const retVal = await app.updateLocation({
       locationId: testLocation.locationId,
       payload: nuData,
-      token: validKey,
+      token,
     });
     expect(retVal).toBe(true);
     const updatedLocation = await app.getLocation({
       locationId: testLocation.locationId,
-      token: validKey,
+      token,
     });
-    expect(updatedLocation).objectContainig({ ...testLocation, ...nuData });
+    expect(updatedLocation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ...testLocation,
+          ...nuData,
+        }),
+      ]),
+    );
   });
 });
