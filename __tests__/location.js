@@ -21,18 +21,19 @@ describe('location', () => {
         },
       ],
     },
+    roomCount: faker.random.number({ min: 1, max: 100 }),
     location: {
       country: faker.address.country(),
       state: faker.address.state(),
       city: faker.address.city(),
       postalCode: faker.address.zipCode().toString(),
       address1: faker.address.streetAddress(),
-      address2: null,
       gps: {
         lat: faker.address.latitude(),
         lng: faker.address.longitude(),
       },
     },
+    productType: 'accomodation', // or non-accomodation
   };
   let allLocations;
   let token;
@@ -57,9 +58,7 @@ describe('location', () => {
   it.only('should be able to retrieve a location', async () => {
     const retVal = await app.getLocation({ locationId: testLocation.locationId, token });
     expect(retVal).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining(testLocation),
-      ]),
+      expect.objectContaining(testLocation),
     );
   });
   it.only('should be able to update a location', async () => {
