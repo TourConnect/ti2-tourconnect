@@ -42,26 +42,26 @@ describe('location', () => {
     const appKey = await createApp();
     token = await createAppUser({ appKey, userToken: jwt });
   });
-  it.only('should be able to create a location', async () => {
+  it('should be able to create a location', async () => {
     const retVal = await app.createLocation({ token, payload: testLocation });
     expect(Object.keys(retVal)).toEqual(expect.arrayContaining(['locationId']));
     testLocation.locationId = retVal.locationId;
   });
-  it.only('should be able to retrieve all locations', async () => {
+  it('should be able to retrieve all locations', async () => {
     allLocations = await app.getLocations({ token });
     expect(Array.isArray(allLocations)).toBe(true);
   });
-  it.only('the new product should be on the list', async () => {
+  it('the new product should be on the list', async () => {
     expect(allLocations.map(({ productId }) => productId))
       .toEqual(expect.arrayContaining([testLocation.productId]));
   });
-  it.only('should be able to retrieve a location', async () => {
+  it('should be able to retrieve a location', async () => {
     const retVal = await app.getLocation({ locationId: testLocation.locationId, token });
     expect(retVal).toEqual(
       expect.objectContaining(testLocation),
     );
   });
-  it.only('should be able to update a location', async () => {
+  it('should be able to update a location', async () => {
     const nuData = {
       locationName: faker.company.companyName(),
       description: faker.lorem.paragraph(),

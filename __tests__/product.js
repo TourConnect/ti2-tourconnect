@@ -7,8 +7,6 @@ const {
   createAppUser,
 } = require('./utils');
 
-const { env: { 'ti2-tourconnect-userTestToken': validKey } } = process;
-
 describe('products', () => {
   let allProducts;
   const testLocation = {

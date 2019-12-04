@@ -77,6 +77,7 @@ const createUser = async () => {
   assert((/^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$/).test(jwt));
   return ({ user: newUserPayload, jwt });
 };
+
 const createApp = async () => {
   const apiConsumerPayload = {
     appName: faker.commerce.productName(),

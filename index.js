@@ -86,7 +86,7 @@ const locationMapIn = {
   })]),
 };
 
-const validateToken = async (token) => {
+const validateToken = async ({ token }) => {
   if (!token) return false;
   try {
     const profile = await request({
@@ -102,7 +102,7 @@ const validateToken = async (token) => {
   }
   return false;
 };
-const getProfile = async (token) => {
+const getProfile = async ({ token }) => {
   const profile = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
@@ -308,7 +308,7 @@ const getProduct = async ({ token, locationId, productId }) => {
   });
 };
 
-const createProduct = async ({ token, payload }) => {
+const createProduct = async ({ token, locationId, payload }) => {
   const resp = request({
     method: 'post',
     uri: `${apiUrl}/api/product`,
@@ -316,7 +316,10 @@ const createProduct = async ({ token, payload }) => {
       ...getHeaders(token),
       'Content-Type': 'application/json',
     },
-    body: payload,
+    body: {
+      locationId,
+      ...payload,
+    },
     json: true,
   });
   return resp;

@@ -17,17 +17,17 @@ describe('profile and key tests', () => {
   });
   describe('key', () => {
     it('try an invalid key', async () => {
-      const retVal = await app.validateToken(faker.random.uuid());
+      const retVal = await app.validateToken({ token: faker.random.uuid() });
       expect(retVal).toBe(false);
     });
     it('try a valid key', async () => {
-      const retVal = await app.validateToken(validKey);
+      const retVal = await app.validateToken({ token: validKey });
       expect(retVal).toBe(true);
     });
   });
   describe('profile', () => {
     it('should be able to retrieve a profile', async () => {
-      const retVal = await app.getProfile(validKey);
+      const retVal = await app.getProfile({ token: validKey });
       expect(Object.keys(retVal)).toEqual(expect.arrayContaining(['name', 'description', 'website', 'telephone']));
     });
     it('should be able to update a profile', async () => {
@@ -50,7 +50,7 @@ describe('profile and key tests', () => {
       };
       const retVal = await app.updateProfile({ payload: nuData, token: validKey });
       expect(retVal).toBe(true);
-      const newVal = await app.getProfile(validKey);
+      const newVal = await app.getProfile({ token: validKey });
       expect(newVal.name).toBe(nuData.name);
       expect(newVal.description).toBe(nuData.description);
       expect(newVal.website).toBe(nuData.website);
@@ -58,4 +58,3 @@ describe('profile and key tests', () => {
     });
   });
 });
-
