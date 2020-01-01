@@ -83,7 +83,6 @@ const createApp = async () => {
     appName: faker.commerce.productName(),
     authorizations: [
       '/api/company',
-      '/api/contract/:contractId',
       '/api/location',
       '/api/product',
     ],
