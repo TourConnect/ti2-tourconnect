@@ -267,7 +267,7 @@ const getProducts = async ({ token, locationId }) => {
     body: productGet({ locationId }),
     json: true,
   });
-  const [{ products }] = resp.companyProfihle.locations
+  const [{ products }] = resp.companyProfile.locations
     .filter(({ locationId: locId }) => locId === locationId);
   return products.map((product) => removeEmpty({
     ...product,
