@@ -1,5 +1,6 @@
 require('dotenv').config();
 const request = require('request-promise');
+const Promise = require('bluebird');
 
 const {
   env: {
@@ -205,18 +206,82 @@ const getLocation = async ({ token, locationId }) => {
   return removeEmpty(doMap(locationsAndMedia[0], locationMapIn));
 };
 
+
+const copyMedia = async ({ oldMedia, token }) => {
+  const newMedia = {};
+  await Promise.each(Object.keys(oldMedia), async (mediaType) => {
+    await Promise.each(oldMedia[mediaType], async (meta) => {
+      const { url } = meta;
+      const fileHeaders = await request.head(url);
+      const contentType = fileHeaders['content-type'];
+      if (!contentType) return;
+      const fileName = (() => {
+        const urlName = `${(new Buffer(url, 'utf-8').toString('base64'))}.${contentType.split('/')[1]}`;
+        if (!fileHeaders['content-disposition']
+          || fileHeaders['content-disposition'].indexOf('filename=') < 0) {
+          return urlName;
+        }
+        return fileHeaders['content-disposition'].toLowerCase()
+          .split('filename=')[1]
+          .split(';')[0]
+          .replace(/"/g, '');
+      })();
+      const binary = await request({
+        method: 'get',
+        uri: url,
+        followRedirect: true,
+        encoding: null,
+      });
+      console.log({ binary });
+      const { signedUrl, url: newUrl } = await request({
+        method: 'get',
+        uri: `${apiUrl}/s3/sign?s3_object_type=${contentType}&s3_file_name=${fileName}`,
+        headers: {
+          ...getHeaders(token),
+        },
+        json: true,
+      });
+      await request({
+        method: 'put',
+        uri: signedUrl,
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: binary,
+      });
+      const genre = contentType.split('/')[0];
+      if (!newMedia[genre]) newMedia[genre] = [];
+      newMedia[genre].push({
+        ...meta,
+        url: newUrl,
+        mediaType: contentType,
+      });
+    });
+  });
+  return newMedia;
+};
+
 const createLocation = async ({ token, payload }) => {
-  const resp = await request({
+  const getMedia = () => {
+    if (payload.media) {
+      return copyMedia({ oldMedia: payload.media, token });
+    }
+    return undefined;
+  };
+  const { location: { _id: locationId } } = await request({
     method: 'post',
     uri: `${apiUrl}/api/location`,
     headers: {
       ...getHeaders(token),
       'Content-Type': 'application/json',
     },
-    body: doMap(payload, locationMapOut),
+    body: doMap({
+      ...payload,
+      media: (await getMedia()),
+    }, locationMapOut),
     json: true,
   });
-  return ({ locationId: resp.location._id });
+  return ({ locationId });
 };
 
 const updateLocation = async ({ token, locationId, payload }) => {
@@ -302,8 +367,10 @@ const getProduct = async ({ token, locationId, productId }) => {
       ],
     },
   } = resp;
+  // console.log({ product });
   return removeEmpty({
     ...product,
+    locationId,
     media: mapMedia(media, product.productId),
   });
 };

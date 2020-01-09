@@ -47,24 +47,13 @@ describe('products', () => {
           url: faker.image.image(),
         },
       ],
-    },
-    location: {
-      country: faker.address.country(),
-      state: faker.address.state(),
-      city: faker.address.city(),
-      postalCode: faker.address.zipCode().toString(),
-      address1: faker.address.streetAddress(),
-      address2: null,
-      gps: {
-        lat: faker.address.latitude(),
-        lng: faker.address.longitude(),
-      },
-    },
+    }, // product has no address / location on TC
   };
   let token;
   beforeAll(async () => {
     // create a new location to add products to
     const { jwt } = await createUser();
+    // console.log({ user });
     const appKey = await createApp();
     token = await createAppUser({ appKey, userToken: jwt });
     // create the test location
