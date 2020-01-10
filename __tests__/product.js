@@ -13,12 +13,12 @@ describe('products', () => {
     locationName: faker.commerce.productName(),
     description: faker.lorem.paragraph(),
     media: {
-      images: [
+      image: [
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
       ],
     },
@@ -39,15 +39,23 @@ describe('products', () => {
     productName: faker.commerce.productName(),
     description: faker.lorem.paragraph(),
     media: {
-      images: [
+      image: [
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
       ],
     }, // product has no address / location on TC
+  };
+  const expectedMedia = {
+    image: expect.arrayContaining([
+      expect.objectContaining({
+        mediaType: expect.any(String),
+        url: expect.any(String),
+      }),
+    ]),
   };
   let token;
   beforeAll(async () => {
@@ -85,7 +93,10 @@ describe('products', () => {
       token,
     });
     expect(retVal).toEqual(
-      expect.objectContaining(testProduct),
+      expect.objectContaining({
+        ...testProduct,
+        media: expectedMedia,
+      }),
     );
   });
   it('should be able to update a product', async () => {
@@ -107,8 +118,9 @@ describe('products', () => {
     });
     expect(updatedProduct).toEqual(
       expect.objectContaining({
-        ...testLocation,
+        ...testProduct,
         ...nuData,
+        media: expectedMedia,
       }),
     );
   });

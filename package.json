@@ -6,6 +6,11 @@
   "scripts": {
     "test": "jest -i"
   },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "<rootDir>/__tests__/utils.js"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/TourConnect/ti2-tourconnect.git"

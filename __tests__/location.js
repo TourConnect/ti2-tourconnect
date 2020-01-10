@@ -12,12 +12,12 @@ describe('location', () => {
     locationName: faker.commerce.productName(),
     description: faker.lorem.paragraph(),
     media: {
-      images: [
+      image: [
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
       ],
     },
@@ -33,7 +33,15 @@ describe('location', () => {
         lng: faker.address.longitude(),
       },
     },
-    productType: 'accomodation', // or non-accomodation
+    productType: 'accommodation', // or non-accomodation
+  };
+  const expectedMedia = {
+    image: expect.arrayContaining([
+      expect.objectContaining({
+        mediaType: expect.any(String),
+        url: expect.any(String),
+      }),
+    ]),
   };
   let allLocations;
   let token;
@@ -58,7 +66,10 @@ describe('location', () => {
   it('should be able to retrieve a location', async () => {
     const retVal = await app.getLocation({ locationId: testLocation.locationId, token });
     expect(retVal).toEqual(
-      expect.objectContaining(testLocation),
+      expect.objectContaining({
+        ...testLocation,
+        media: expectedMedia,
+      }),
     );
   });
   it('should be able to update a location', async () => {
@@ -77,12 +88,11 @@ describe('location', () => {
       token,
     });
     expect(updatedLocation).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          ...testLocation,
-          ...nuData,
-        }),
-      ]),
+      expect.objectContaining({
+        ...testLocation,
+        ...nuData,
+        media: expectedMedia,
+      }),
     );
   });
 });

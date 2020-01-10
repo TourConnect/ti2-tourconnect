@@ -132,19 +132,10 @@ const updateProfile = async ({ token, payload }) => {
   return true;
 };
 
-const mapMedia = (media, tag) => {
-  const retVal = {};
-  media
-    .filter(({ tags }) => (tags.indexOf(tag) > -1))
-    .forEach(({ mediaType, url }) => {
-      retVal[mediaType.split('/')[0]] = url;
-    });
-  return retVal;
-};
-
 const locationGet = `{
-  media { url, mediaType, tags }, locations {
+  locations {
     locationId, locationName, description,
+    media { image { mediaType, url } },
     address { country, state, city, postalCode, addressOne, addressTwo, loc { coordinates, type } },
     contacts { email, fax, firstName, lastName, name, phone, type },
     coverImageUrl, website, phone, notes, roomCount, productType  } }`;
@@ -159,12 +150,8 @@ const getLocations = async ({ token }) => {
     body: locationGet,
     json: true,
   });
-  const { companyProfile: { locations, media } } = resp;
-  const locationsAndMedia = locations.map((location) => ({
-    ...location,
-    media: mapMedia(media, location.locationId),
-  }));
-  return locationsAndMedia.map((location) => doMap(location, locationMapIn));
+  const { companyProfile: { locations } } = resp;
+  return locations.map((location) => doMap(location, locationMapIn));
 };
 
 const removeEmpty = (obj) => {
@@ -172,7 +159,7 @@ const removeEmpty = (obj) => {
   Object.entries(obj).forEach(([attribute, value]) => {
     if ((!Array.isArray(value) && value !== null && value !== undefined)
       || (Array.isArray(value) && value.length > 0)) {
-      if (typeof value === 'object') {
+      if (typeof value === 'object' && !Array.isArray(value)) {
         if (Object.keys(value).length > 0) {
           retVal[attribute] = removeEmpty(value);
         }
@@ -198,12 +185,8 @@ const getLocation = async ({ token, locationId }) => {
     ),
     json: true,
   });
-  const { companyProfile: { locations, media } } = res;
-  const locationsAndMedia = locations.map((location) => ({
-    ...location,
-    media: mapMedia(media, location.locationId),
-  }));
-  return removeEmpty(doMap(locationsAndMedia[0], locationMapIn));
+  const { companyProfile: { locations: [location] } } = res;
+  return removeEmpty(doMap(location, locationMapIn));
 };
 
 
@@ -214,9 +197,9 @@ const copyMedia = async ({ oldMedia, token }) => {
       const { url } = meta;
       const fileHeaders = await request.head(url);
       const contentType = fileHeaders['content-type'];
-      if (!contentType) return;
+      if (!contentType) return {};
       const fileName = (() => {
-        const urlName = `${(new Buffer(url, 'utf-8').toString('base64'))}.${contentType.split('/')[1]}`;
+        const urlName = `${(Buffer.from(url, 'utf-8').toString('base64'))}.${contentType.split('/')[1]}`;
         if (!fileHeaders['content-disposition']
           || fileHeaders['content-disposition'].indexOf('filename=') < 0) {
           return urlName;
@@ -232,7 +215,6 @@ const copyMedia = async ({ oldMedia, token }) => {
         followRedirect: true,
         encoding: null,
       });
-      console.log({ binary });
       const { signedUrl, url: newUrl } = await request({
         method: 'get',
         uri: `${apiUrl}/s3/sign?s3_object_type=${contentType}&s3_file_name=${fileName}`,
@@ -262,12 +244,12 @@ const copyMedia = async ({ oldMedia, token }) => {
 };
 
 const createLocation = async ({ token, payload }) => {
-  const getMedia = () => {
+  const media = await (async () => {
     if (payload.media) {
       return copyMedia({ oldMedia: payload.media, token });
     }
-    return undefined;
-  };
+    return {};
+  })();
   const { location: { _id: locationId } } = await request({
     method: 'post',
     uri: `${apiUrl}/api/location`,
@@ -277,7 +259,7 @@ const createLocation = async ({ token, payload }) => {
     },
     body: doMap({
       ...payload,
-      media: (await getMedia()),
+      media,
     }, locationMapOut),
     json: true,
   });
@@ -302,12 +284,13 @@ const updateLocation = async ({ token, locationId, payload }) => {
 };
 
 const productGet = ({ locationId }) => `{
-  media { url, mediaType, tags }, locations (locationId: "${locationId}"){
-    locationId
+  locations (locationId: "${locationId}"){
+    locationId,
     products {
       productId,
       productName, productType, productCode, description, notes, coverImageUrl,
       interconnectingRooms, amenities, roomCountInfo { value, unit },
+      media { image { mediaType, url } },
       roomSizeInfo { value, unit }, totalMaxPassengers, totalMinPassengers,
       tourDuration { value, unit }, tourDurationDoesNotApply,
       productInfo { include, exclude, whatToBring },
@@ -334,10 +317,7 @@ const getProducts = async ({ token, locationId }) => {
   });
   const [{ products }] = resp.companyProfile.locations
     .filter(({ locationId: locId }) => locId === locationId);
-  return products.map((product) => removeEmpty({
-    ...product,
-    media: mapMedia(resp.companyProfile.media, product.productId),
-  }));
+  return products.map((product) => removeEmpty(product));
 };
 
 const getProduct = async ({ token, locationId, productId }) => {
@@ -357,7 +337,6 @@ const getProduct = async ({ token, locationId, productId }) => {
   ) return undefined;
   const {
     companyProfile: {
-      media,
       locations: [
         {
           products: [
@@ -367,15 +346,19 @@ const getProduct = async ({ token, locationId, productId }) => {
       ],
     },
   } = resp;
-  // console.log({ product });
   return removeEmpty({
     ...product,
     locationId,
-    media: mapMedia(media, product.productId),
   });
 };
 
 const createProduct = async ({ token, locationId, payload }) => {
+  const media = await (async () => {
+    if (payload.media) {
+      return copyMedia({ oldMedia: payload.media, token });
+    }
+    return {};
+  })();
   const resp = request({
     method: 'post',
     uri: `${apiUrl}/api/product`,
@@ -386,6 +369,7 @@ const createProduct = async ({ token, locationId, payload }) => {
     body: {
       locationId,
       ...payload,
+      media,
     },
     json: true,
   });
@@ -408,7 +392,7 @@ const updateProduct = async ({
     body: {
       locationId,
       productId,
-      payload,
+      ...payload,
     },
     json: true,
   });
