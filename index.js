@@ -8,8 +8,8 @@ const {
   },
 } = process;
 
-const getHeaders = (token) => ({
-  Authorization: `Bearer ${Buffer.from(token).toString('base64')}`,
+const getHeaders = (apiKey) => ({
+  Authorization: `Bearer ${Buffer.from(apiKey).toString('base64')}`,
   'Content-Type': 'text-plain',
 });
 const doMap = (obj, map) => {
@@ -87,13 +87,13 @@ const locationMapIn = {
   })]),
 };
 
-const validateToken = async ({ token }) => {
-  if (!token) return false;
+const validateToken = async ({ token: { apiKey } }) => {
+  if (!apiKey) return false;
   try {
     const profile = await request({
       method: 'post',
       uri: `${apiUrl}/api/company`,
-      headers: getHeaders(token),
+      headers: getHeaders(apiKey),
       body: '{companyId}',
     });
     const { companyProfile } = JSON.parse(profile);
@@ -103,16 +103,16 @@ const validateToken = async ({ token }) => {
   }
   return false;
 };
-const getProfile = async ({ token }) => {
+const getProfile = async ({ token: { apiKey } }) => {
   const profile = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
-    headers: getHeaders(token),
+    headers: getHeaders(apiKey),
     body: '{ companyName description website  phone address { addressOne addressTwo city state country postalCode loc { coordinates }} }',
   });
   return doMap(JSON.parse(profile).companyProfile, mapIn);
 };
-const updateProfile = async ({ token, payload }) => {
+const updateProfile = async ({ token: { apiKey }, payload }) => {
   // re-map
   // const newPayload = {
   //   companyName: payload.name,
@@ -123,7 +123,7 @@ const updateProfile = async ({ token, payload }) => {
     method: 'put',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: newPayload,
@@ -139,12 +139,12 @@ const locationGet = `{
     address { country, state, city, postalCode, addressOne, addressTwo, loc { coordinates, type } },
     contacts { email, fax, firstName, lastName, name, phone, type },
     coverImageUrl, website, phone, notes, roomCount, productType  } }`;
-const getLocations = async ({ token }) => {
+const getLocations = async ({ token: { apiKey } }) => {
   const resp = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: locationGet,
@@ -171,12 +171,12 @@ const removeEmpty = (obj) => {
   return retVal;
 };
 
-const getLocation = async ({ token, locationId }) => {
+const getLocation = async ({ token: { apiKey }, locationId }) => {
   const res = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: locationGet.replace(
@@ -190,7 +190,7 @@ const getLocation = async ({ token, locationId }) => {
 };
 
 
-const copyMedia = async ({ oldMedia, token }) => {
+const copyMedia = async ({ oldMedia, token: { apiKey } }) => {
   const newMedia = {};
   await Promise.each(Object.keys(oldMedia), async (mediaType) => {
     await Promise.each(oldMedia[mediaType], async (meta) => {
@@ -219,7 +219,7 @@ const copyMedia = async ({ oldMedia, token }) => {
         method: 'get',
         uri: `${apiUrl}/s3/sign?s3_object_type=${contentType}&s3_file_name=${fileName}`,
         headers: {
-          ...getHeaders(token),
+          ...getHeaders(apiKey),
         },
         json: true,
       });
@@ -243,7 +243,7 @@ const copyMedia = async ({ oldMedia, token }) => {
   return newMedia;
 };
 
-const createLocation = async ({ token, payload }) => {
+const createLocation = async ({ token, token: { apiKey }, payload }) => {
   const media = await (async () => {
     if (payload.media) {
       return copyMedia({ oldMedia: payload.media, token });
@@ -254,7 +254,7 @@ const createLocation = async ({ token, payload }) => {
     method: 'post',
     uri: `${apiUrl}/api/location`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: doMap({
@@ -266,12 +266,12 @@ const createLocation = async ({ token, payload }) => {
   return ({ locationId });
 };
 
-const updateLocation = async ({ token, locationId, payload }) => {
+const updateLocation = async ({ token: { apiKey }, locationId, payload }) => {
   await request({
     method: 'post',
     uri: `${apiUrl}/api/location`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: {
@@ -304,12 +304,12 @@ const productGet = ({ locationId }) => `{
       },
     }
   }}`;
-const getProducts = async ({ token, locationId }) => {
+const getProducts = async ({ token: { apiKey }, locationId }) => {
   const resp = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: productGet({ locationId }),
@@ -320,13 +320,13 @@ const getProducts = async ({ token, locationId }) => {
   return products.map((product) => removeEmpty(product));
 };
 
-const getProduct = async ({ token, locationId, productId }) => {
+const getProduct = async ({ token: { apiKey }, locationId, productId }) => {
   const singleGet = productGet({ locationId }).replace('products ', `products (productId: "${productId}")`);
   const resp = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: singleGet,
@@ -352,7 +352,12 @@ const getProduct = async ({ token, locationId, productId }) => {
   });
 };
 
-const createProduct = async ({ token, locationId, payload }) => {
+const createProduct = async ({
+  token: { apiKey },
+  token,
+  locationId,
+  payload,
+}) => {
   const media = await (async () => {
     if (payload.media) {
       return copyMedia({ oldMedia: payload.media, token });
@@ -363,7 +368,7 @@ const createProduct = async ({ token, locationId, payload }) => {
     method: 'post',
     uri: `${apiUrl}/api/product`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: {
@@ -377,7 +382,7 @@ const createProduct = async ({ token, locationId, payload }) => {
 };
 
 const updateProduct = async ({
-  token,
+  token: { apiKey },
   locationId,
   productId,
   payload,
@@ -386,7 +391,7 @@ const updateProduct = async ({
     method: 'post',
     uri: `${apiUrl}/api/product`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: {

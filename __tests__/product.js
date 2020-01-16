@@ -57,21 +57,21 @@ describe('products', () => {
       }),
     ]),
   };
-  let token;
+  let apiKey;
   beforeAll(async () => {
     // create a new location to add products to
     const { jwt } = await createUser();
     // console.log({ user });
     const appKey = await createApp();
-    token = await createAppUser({ appKey, userToken: jwt });
+    apiKey = await createAppUser({ appKey, userToken: jwt });
     // create the test location
-    const { locationId } = await app.createLocation({ token, payload: testLocation });
+    const { locationId } = await app.createLocation({ token: { apiKey }, payload: testLocation });
     testProduct.locationId = locationId;
     testLocation.locationId = locationId;
   });
   it('should be able to create a product', async () => {
     const retVal = await app.createProduct({
-      token,
+      token: { apiKey },
       locationId: testLocation.locationId,
       payload: testProduct,
     });
@@ -79,7 +79,7 @@ describe('products', () => {
     testProduct.productId = retVal.productId;
   });
   it('should be able to retrieve all products', async () => {
-    allProducts = await app.getProducts({ token, locationId: testProduct.locationId });
+    allProducts = await app.getProducts({ token: { apiKey }, locationId: testProduct.locationId });
     expect(Array.isArray(allProducts)).toBe(true);
   });
   it('the new product should be on the list', async () => {
@@ -90,7 +90,7 @@ describe('products', () => {
     const retVal = await app.getProduct({
       locationId: testProduct.locationId,
       productId: testProduct.productId,
-      token,
+      token: { apiKey },
     });
     expect(retVal).toEqual(
       expect.objectContaining({
@@ -108,13 +108,13 @@ describe('products', () => {
       locationId: testLocation.locationId,
       productId: testProduct.productId,
       payload: nuData,
-      token,
+      token: { apiKey },
     });
     expect(retVal).toBe(true);
     const updatedProduct = await app.getProduct({
       locationId: testLocation.locationId,
       productId: testProduct.productId,
-      token,
+      token: { apiKey },
     });
     expect(updatedProduct).toEqual(
       expect.objectContaining({

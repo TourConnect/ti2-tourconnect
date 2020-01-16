@@ -44,19 +44,19 @@ describe('location', () => {
     ]),
   };
   let allLocations;
-  let token;
+  let apiKey;
   beforeAll(async () => {
     const { jwt } = await createUser();
     const appKey = await createApp();
-    token = await createAppUser({ appKey, userToken: jwt });
+    apiKey = await createAppUser({ appKey, userToken: jwt });
   });
   it('should be able to create a location', async () => {
-    const retVal = await app.createLocation({ token, payload: testLocation });
+    const retVal = await app.createLocation({ token: { apiKey }, payload: testLocation });
     expect(Object.keys(retVal)).toEqual(expect.arrayContaining(['locationId']));
     testLocation.locationId = retVal.locationId;
   });
   it('should be able to retrieve all locations', async () => {
-    allLocations = await app.getLocations({ token });
+    allLocations = await app.getLocations({ token: { apiKey } });
     expect(Array.isArray(allLocations)).toBe(true);
   });
   it('the new product should be on the list', async () => {
@@ -64,7 +64,10 @@ describe('location', () => {
       .toEqual(expect.arrayContaining([testLocation.productId]));
   });
   it('should be able to retrieve a location', async () => {
-    const retVal = await app.getLocation({ locationId: testLocation.locationId, token });
+    const retVal = await app.getLocation({
+      locationId: testLocation.locationId,
+      token: { apiKey },
+    });
     expect(retVal).toEqual(
       expect.objectContaining({
         ...testLocation,
@@ -80,12 +83,12 @@ describe('location', () => {
     const retVal = await app.updateLocation({
       locationId: testLocation.locationId,
       payload: nuData,
-      token,
+      token: { apiKey },
     });
     expect(retVal).toBe(true);
     const updatedLocation = await app.getLocation({
       locationId: testLocation.locationId,
-      token,
+      token: { apiKey },
     });
     expect(updatedLocation).toEqual(
       expect.objectContaining({
