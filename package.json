@@ -21,6 +21,7 @@
     "url": "https://github.com/TourConnect/ti2-tourconnect/issues"
   },
   "homepage": "https://github.com/TourConnect/ti2-tourconnect#readme",
+  "publishConfig": { "registry": "https://npm.pkg.github.com/@tourconnect" },
   "dependencies": {
     "bluebird": "^3.7.2",
     "cheerio": "^1.0.0-rc.3",
