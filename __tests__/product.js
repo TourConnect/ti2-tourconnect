@@ -13,12 +13,12 @@ describe('products', () => {
     locationName: faker.commerce.productName(),
     description: faker.lorem.paragraph(),
     media: {
-      images: [
+      image: [
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
       ],
     },
@@ -39,42 +39,39 @@ describe('products', () => {
     productName: faker.commerce.productName(),
     description: faker.lorem.paragraph(),
     media: {
-      images: [
+      image: [
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
         {
-          url: faker.image.image(),
+          url: 'https://source.unsplash.com/random',
         },
       ],
-    },
-    location: {
-      country: faker.address.country(),
-      state: faker.address.state(),
-      city: faker.address.city(),
-      postalCode: faker.address.zipCode().toString(),
-      address1: faker.address.streetAddress(),
-      address2: null,
-      gps: {
-        lat: faker.address.latitude(),
-        lng: faker.address.longitude(),
-      },
-    },
+    }, // product has no address / location on TC
   };
-  let token;
+  const expectedMedia = {
+    image: expect.arrayContaining([
+      expect.objectContaining({
+        mediaType: expect.any(String),
+        url: expect.any(String),
+      }),
+    ]),
+  };
+  let apiKey;
   beforeAll(async () => {
     // create a new location to add products to
     const { jwt } = await createUser();
+    // console.log({ user });
     const appKey = await createApp();
-    token = await createAppUser({ appKey, userToken: jwt });
+    apiKey = await createAppUser({ appKey, userToken: jwt });
     // create the test location
-    const { locationId } = await app.createLocation({ token, payload: testLocation });
+    const { locationId } = await app.createLocation({ token: { apiKey }, payload: testLocation });
     testProduct.locationId = locationId;
     testLocation.locationId = locationId;
   });
   it('should be able to create a product', async () => {
     const retVal = await app.createProduct({
-      token,
+      token: { apiKey },
       locationId: testLocation.locationId,
       payload: testProduct,
     });
@@ -82,7 +79,7 @@ describe('products', () => {
     testProduct.productId = retVal.productId;
   });
   it('should be able to retrieve all products', async () => {
-    allProducts = await app.getProducts({ token, locationId: testProduct.locationId });
+    allProducts = await app.getProducts({ token: { apiKey }, locationId: testProduct.locationId });
     expect(Array.isArray(allProducts)).toBe(true);
   });
   it('the new product should be on the list', async () => {
@@ -93,10 +90,13 @@ describe('products', () => {
     const retVal = await app.getProduct({
       locationId: testProduct.locationId,
       productId: testProduct.productId,
-      token,
+      token: { apiKey },
     });
     expect(retVal).toEqual(
-      expect.objectContaining(testProduct),
+      expect.objectContaining({
+        ...testProduct,
+        media: expectedMedia,
+      }),
     );
   });
   it('should be able to update a product', async () => {
@@ -108,18 +108,19 @@ describe('products', () => {
       locationId: testLocation.locationId,
       productId: testProduct.productId,
       payload: nuData,
-      token,
+      token: { apiKey },
     });
     expect(retVal).toBe(true);
     const updatedProduct = await app.getProduct({
       locationId: testLocation.locationId,
       productId: testProduct.productId,
-      token,
+      token: { apiKey },
     });
     expect(updatedProduct).toEqual(
       expect.objectContaining({
-        ...testLocation,
+        ...testProduct,
         ...nuData,
+        media: expectedMedia,
       }),
     );
   });

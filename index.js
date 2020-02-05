@@ -1,5 +1,6 @@
 require('dotenv').config();
 const request = require('request-promise');
+const Promise = require('bluebird');
 
 const {
   env: {
@@ -7,8 +8,8 @@ const {
   },
 } = process;
 
-const getHeaders = (token) => ({
-  Authorization: `Bearer ${Buffer.from(token).toString('base64')}`,
+const getHeaders = (apiKey) => ({
+  Authorization: `Bearer ${Buffer.from(apiKey).toString('base64')}`,
   'Content-Type': 'text-plain',
 });
 const doMap = (obj, map) => {
@@ -86,13 +87,13 @@ const locationMapIn = {
   })]),
 };
 
-const validateToken = async ({ token }) => {
-  if (!token) return false;
+const validateToken = async ({ token: { apiKey } }) => {
+  if (!apiKey) return false;
   try {
     const profile = await request({
       method: 'post',
       uri: `${apiUrl}/api/company`,
-      headers: getHeaders(token),
+      headers: getHeaders(apiKey),
       body: '{companyId}',
     });
     const { companyProfile } = JSON.parse(profile);
@@ -102,16 +103,16 @@ const validateToken = async ({ token }) => {
   }
   return false;
 };
-const getProfile = async ({ token }) => {
+const getProfile = async ({ token: { apiKey } }) => {
   const profile = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
-    headers: getHeaders(token),
+    headers: getHeaders(apiKey),
     body: '{ companyName description website  phone address { addressOne addressTwo city state country postalCode loc { coordinates }} }',
   });
   return doMap(JSON.parse(profile).companyProfile, mapIn);
 };
-const updateProfile = async ({ token, payload }) => {
+const updateProfile = async ({ token: { apiKey }, payload }) => {
   // re-map
   // const newPayload = {
   //   companyName: payload.name,
@@ -122,7 +123,7 @@ const updateProfile = async ({ token, payload }) => {
     method: 'put',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: newPayload,
@@ -131,39 +132,26 @@ const updateProfile = async ({ token, payload }) => {
   return true;
 };
 
-const mapMedia = (media, tag) => {
-  const retVal = {};
-  media
-    .filter(({ tags }) => (tags.indexOf(tag) > -1))
-    .forEach(({ mediaType, url }) => {
-      retVal[mediaType.split('/')[0]] = url;
-    });
-  return retVal;
-};
-
 const locationGet = `{
-  media { url, mediaType, tags }, locations {
+  locations {
     locationId, locationName, description,
+    media { image { mediaType, url } },
     address { country, state, city, postalCode, addressOne, addressTwo, loc { coordinates, type } },
     contacts { email, fax, firstName, lastName, name, phone, type },
     coverImageUrl, website, phone, notes, roomCount, productType  } }`;
-const getLocations = async ({ token }) => {
+const getLocations = async ({ token: { apiKey } }) => {
   const resp = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: locationGet,
     json: true,
   });
-  const { companyProfile: { locations, media } } = resp;
-  const locationsAndMedia = locations.map((location) => ({
-    ...location,
-    media: mapMedia(media, location.locationId),
-  }));
-  return locationsAndMedia.map((location) => doMap(location, locationMapIn));
+  const { companyProfile: { locations } } = resp;
+  return locations.map((location) => doMap(location, locationMapIn));
 };
 
 const removeEmpty = (obj) => {
@@ -171,7 +159,7 @@ const removeEmpty = (obj) => {
   Object.entries(obj).forEach(([attribute, value]) => {
     if ((!Array.isArray(value) && value !== null && value !== undefined)
       || (Array.isArray(value) && value.length > 0)) {
-      if (typeof value === 'object') {
+      if (typeof value === 'object' && !Array.isArray(value)) {
         if (Object.keys(value).length > 0) {
           retVal[attribute] = removeEmpty(value);
         }
@@ -183,12 +171,12 @@ const removeEmpty = (obj) => {
   return retVal;
 };
 
-const getLocation = async ({ token, locationId }) => {
+const getLocation = async ({ token: { apiKey }, locationId }) => {
   const res = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: locationGet.replace(
@@ -197,34 +185,93 @@ const getLocation = async ({ token, locationId }) => {
     ),
     json: true,
   });
-  const { companyProfile: { locations, media } } = res;
-  const locationsAndMedia = locations.map((location) => ({
-    ...location,
-    media: mapMedia(media, location.locationId),
-  }));
-  return removeEmpty(doMap(locationsAndMedia[0], locationMapIn));
+  const { companyProfile: { locations: [location] } } = res;
+  return removeEmpty(doMap(location, locationMapIn));
 };
 
-const createLocation = async ({ token, payload }) => {
-  const resp = await request({
+
+const copyMedia = async ({ oldMedia, token: { apiKey } }) => {
+  const newMedia = {};
+  await Promise.each(Object.keys(oldMedia), async (mediaType) => {
+    await Promise.each(oldMedia[mediaType], async (meta) => {
+      const { url } = meta;
+      const fileHeaders = await request.head(url);
+      const contentType = fileHeaders['content-type'];
+      if (!contentType) return {};
+      const fileName = (() => {
+        const urlName = `${(Buffer.from(url, 'utf-8').toString('base64'))}.${contentType.split('/')[1]}`;
+        if (!fileHeaders['content-disposition']
+          || fileHeaders['content-disposition'].indexOf('filename=') < 0) {
+          return urlName;
+        }
+        return fileHeaders['content-disposition'].toLowerCase()
+          .split('filename=')[1]
+          .split(';')[0]
+          .replace(/"/g, '');
+      })();
+      const binary = await request({
+        method: 'get',
+        uri: url,
+        followRedirect: true,
+        encoding: null,
+      });
+      const { signedUrl, url: newUrl } = await request({
+        method: 'get',
+        uri: `${apiUrl}/s3/sign?s3_object_type=${contentType}&s3_file_name=${fileName}`,
+        headers: {
+          ...getHeaders(apiKey),
+        },
+        json: true,
+      });
+      await request({
+        method: 'put',
+        uri: signedUrl,
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: binary,
+      });
+      const genre = contentType.split('/')[0];
+      if (!newMedia[genre]) newMedia[genre] = [];
+      newMedia[genre].push({
+        ...meta,
+        url: newUrl,
+        mediaType: contentType,
+      });
+    });
+  });
+  return newMedia;
+};
+
+const createLocation = async ({ token, token: { apiKey }, payload }) => {
+  const media = await (async () => {
+    if (payload.media) {
+      return copyMedia({ oldMedia: payload.media, token });
+    }
+    return {};
+  })();
+  const { location: { _id: locationId } } = await request({
     method: 'post',
     uri: `${apiUrl}/api/location`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
-    body: doMap(payload, locationMapOut),
+    body: doMap({
+      ...payload,
+      media,
+    }, locationMapOut),
     json: true,
   });
-  return ({ locationId: resp.location._id });
+  return ({ locationId });
 };
 
-const updateLocation = async ({ token, locationId, payload }) => {
+const updateLocation = async ({ token: { apiKey }, locationId, payload }) => {
   await request({
     method: 'post',
     uri: `${apiUrl}/api/location`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: {
@@ -237,12 +284,13 @@ const updateLocation = async ({ token, locationId, payload }) => {
 };
 
 const productGet = ({ locationId }) => `{
-  media { url, mediaType, tags }, locations (locationId: "${locationId}"){
-    locationId
+  locations (locationId: "${locationId}"){
+    locationId,
     products {
       productId,
       productName, productType, productCode, description, notes, coverImageUrl,
       interconnectingRooms, amenities, roomCountInfo { value, unit },
+      media { image { mediaType, url } },
       roomSizeInfo { value, unit }, totalMaxPassengers, totalMinPassengers,
       tourDuration { value, unit }, tourDurationDoesNotApply,
       productInfo { include, exclude, whatToBring },
@@ -256,32 +304,29 @@ const productGet = ({ locationId }) => `{
       },
     }
   }}`;
-const getProducts = async ({ token, locationId }) => {
+const getProducts = async ({ token: { apiKey }, locationId }) => {
   const resp = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: productGet({ locationId }),
     json: true,
   });
-  const [{ products }] = resp.companyProfihle.locations
+  const [{ products }] = resp.companyProfile.locations
     .filter(({ locationId: locId }) => locId === locationId);
-  return products.map((product) => removeEmpty({
-    ...product,
-    media: mapMedia(resp.companyProfile.media, product.productId),
-  }));
+  return products.map((product) => removeEmpty(product));
 };
 
-const getProduct = async ({ token, locationId, productId }) => {
+const getProduct = async ({ token: { apiKey }, locationId, productId }) => {
   const singleGet = productGet({ locationId }).replace('products ', `products (productId: "${productId}")`);
   const resp = await request({
     method: 'post',
     uri: `${apiUrl}/api/company`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: singleGet,
@@ -292,7 +337,6 @@ const getProduct = async ({ token, locationId, productId }) => {
   ) return undefined;
   const {
     companyProfile: {
-      media,
       locations: [
         {
           products: [
@@ -304,21 +348,33 @@ const getProduct = async ({ token, locationId, productId }) => {
   } = resp;
   return removeEmpty({
     ...product,
-    media: mapMedia(media, product.productId),
+    locationId,
   });
 };
 
-const createProduct = async ({ token, locationId, payload }) => {
+const createProduct = async ({
+  token: { apiKey },
+  token,
+  locationId,
+  payload,
+}) => {
+  const media = await (async () => {
+    if (payload.media) {
+      return copyMedia({ oldMedia: payload.media, token });
+    }
+    return {};
+  })();
   const resp = request({
     method: 'post',
     uri: `${apiUrl}/api/product`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: {
       locationId,
       ...payload,
+      media,
     },
     json: true,
   });
@@ -326,7 +382,7 @@ const createProduct = async ({ token, locationId, payload }) => {
 };
 
 const updateProduct = async ({
-  token,
+  token: { apiKey },
   locationId,
   productId,
   payload,
@@ -335,13 +391,13 @@ const updateProduct = async ({
     method: 'post',
     uri: `${apiUrl}/api/product`,
     headers: {
-      ...getHeaders(token),
+      ...getHeaders(apiKey),
       'Content-Type': 'application/json',
     },
     body: {
       locationId,
       productId,
-      payload,
+      ...payload,
     },
     json: true,
   });
