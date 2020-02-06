@@ -1,6 +1,15 @@
 /* global describe it expect beforeAll */
+require('dotenv').config();
 const faker = require('faker');
-const app = require('../index');
+const Plugin = require('../index');
+const { pickBy } = require('ramda');
+const { name: pluginName } = require('../package.json');
+
+const app = new Plugin(pickBy(
+  (_val, key) => key.substring(0, pluginName.length) === pluginName,
+  process.env,
+));
+
 const {
   createUser,
   createApp,

@@ -1,6 +1,6 @@
 {
   "name": "ti2-tourconnect",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Ti2's tourconnects plugin",
   "main": "index.js",
   "scripts": {
@@ -21,11 +21,14 @@
     "url": "https://github.com/TourConnect/ti2-tourconnect/issues"
   },
   "homepage": "https://github.com/TourConnect/ti2-tourconnect#readme",
-  "publishConfig": { "registry": "https://npm.pkg.github.com/@tourconnect" },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/@tourconnect"
+  },
   "dependencies": {
     "bluebird": "^3.7.2",
     "cheerio": "^1.0.0-rc.3",
     "dotenv": "^8.2.0",
+    "ramda": "^0.27.0",
     "request-promise": "^4.2.4"
   },
   "devDependencies": {

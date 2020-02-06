@@ -1,6 +1,14 @@
 /* global describe beforeAll it expect */
 const faker = require('faker');
-const app = require('../index');
+const { pickBy } = require('ramda');
+const Plugin = require('../index');
+const { name: pluginName } = require('../package.json');
+
+const app = new Plugin(pickBy(
+  (_val, key) => key.substring(0, pluginName.length) === pluginName,
+  process.env,
+));
+
 const {
   createUser,
   createApp,

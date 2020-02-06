@@ -2,6 +2,7 @@ const faker = require('faker');
 const request = require('request-promise');
 const cheerio = require('cheerio');
 const assert = require('assert');
+require('dotenv').config();
 
 const {
   env: {
