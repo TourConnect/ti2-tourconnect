@@ -2,12 +2,11 @@ const faker = require('faker');
 const request = require('request-promise');
 const cheerio = require('cheerio');
 const assert = require('assert');
-require('dotenv').config();
 
 const {
   env: {
-    'ti2-tourconnect-apiUrl': apiUrl,
-    'ti2-tourconnect-appToken': appToken,
+    ti2_tourconnect_apiUrl: apiUrl,
+    ti2_tourconnect_appToken: appToken,
   },
 } = process;
 

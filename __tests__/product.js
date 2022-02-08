@@ -1,13 +1,13 @@
 /* global describe beforeAll it expect */
 const faker = require('faker');
-const { pickBy } = require('ramda');
 const Plugin = require('../index');
-const { name: pluginName } = require('../package.json');
 
-const app = new Plugin(pickBy(
-  (_val, key) => key.substring(0, pluginName.length) === pluginName,
-  process.env,
-));
+const app = new Plugin();
+
+const token = {
+  apiUrl: process.env.ti2_tourconnect_apiUrl,
+  appToken: process.env.ti2_tourconnect_appToken,
+};
 
 const {
   createUser,
@@ -73,13 +73,13 @@ describe('products', () => {
     const appKey = await createApp();
     apiKey = await createAppUser({ appKey, userToken: jwt });
     // create the test location
-    const { locationId } = await app.createLocation({ token: { apiKey }, payload: testLocation });
+    const { locationId } = await app.createLocation({ token, payload: testLocation });
     testProduct.locationId = locationId;
     testLocation.locationId = locationId;
   });
   it('should be able to create a product', async () => {
     const retVal = await app.createProduct({
-      token: { apiKey },
+      token,
       locationId: testLocation.locationId,
       payload: testProduct,
     });
@@ -87,7 +87,7 @@ describe('products', () => {
     testProduct.productId = retVal.productId;
   });
   it('should be able to retrieve all products', async () => {
-    allProducts = await app.getProducts({ token: { apiKey }, locationId: testProduct.locationId });
+    allProducts = await app.getProducts({ token, locationId: testProduct.locationId });
     expect(Array.isArray(allProducts)).toBe(true);
   });
   it('the new product should be on the list', async () => {
@@ -98,7 +98,7 @@ describe('products', () => {
     const retVal = await app.getProduct({
       locationId: testProduct.locationId,
       productId: testProduct.productId,
-      token: { apiKey },
+      token,
     });
     expect(retVal).toEqual(
       expect.objectContaining({
@@ -116,13 +116,13 @@ describe('products', () => {
       locationId: testLocation.locationId,
       productId: testProduct.productId,
       payload: nuData,
-      token: { apiKey },
+      token,
     });
     expect(retVal).toBe(true);
     const updatedProduct = await app.getProduct({
       locationId: testLocation.locationId,
       productId: testProduct.productId,
-      token: { apiKey },
+      token,
     });
     expect(updatedProduct).toEqual(
       expect.objectContaining({
