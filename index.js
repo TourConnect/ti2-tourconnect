@@ -4,7 +4,7 @@ const assert = require('assert');
 
 const getHeaders = (apiKey) => ({
   Authorization: `Bearer ${Buffer.from(apiKey).toString('base64')}`,
-  'Content-Type': 'text-plain',
+  'Content-Type': 'application/json',
 });
 
 const locationGet = `{
@@ -147,7 +147,10 @@ class Plugin {
       const profile = await request({
         method: 'post',
         uri: `${apiUrl}/api/company`,
-        headers: getHeaders(apiKey),
+        headers: {
+          ...getHeaders(apiKey),
+          'Content-Type': 'text/html; charset=UTF-8',
+        },
         body: '{companyId}',
       });
       const { companyProfile } = JSON.parse(profile);
@@ -167,7 +170,10 @@ class Plugin {
     const profile = await request({
       method: 'post',
       uri: `${apiUrl}/api/company`,
-      headers: getHeaders(apiKey),
+      headers: {
+        ...getHeaders(apiKey),
+        'Content-Type': 'text/html; charset=UTF-8',
+      },
       body: '{ companyName description website  phone address { addressOne addressTwo city state country postalCode loc { coordinates }} }',
     });
     return doMap(JSON.parse(profile).companyProfile, mapIn);
@@ -189,10 +195,7 @@ class Plugin {
     await request({
       method: 'put',
       uri: `${apiUrl}/api/company`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: newPayload,
       json: true,
     });
@@ -208,10 +211,7 @@ class Plugin {
     const resp = await request({
       method: 'post',
       uri: `${apiUrl}/api/company`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: locationGet,
       json: true,
     });
@@ -229,10 +229,7 @@ class Plugin {
     const res = await request({
       method: 'post',
       uri: `${apiUrl}/api/company`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: locationGet.replace(
         'locations {',
         `locations (locationId: "${locationId}") {`,
@@ -277,9 +274,7 @@ class Plugin {
         const { signedUrl, url: newUrl } = await request({
           method: 'get',
           uri: `${apiUrl}/s3/sign?s3_object_type=${contentType}&s3_file_name=${fileName}`,
-          headers: {
-            ...getHeaders(apiKey),
-          },
+          headers: getHeaders(apiKey),
           json: true,
         });
         await request({
@@ -305,8 +300,8 @@ class Plugin {
 
   async createLocation({
     token: {
-      apiKey = this.apiKey,
       apiUrl = this.apiUrl,
+      apiKey = this.apiKey,
     },
     token,
     payload,
@@ -320,10 +315,7 @@ class Plugin {
     const { location: { _id: locationId } } = await request({
       method: 'post',
       uri: `${apiUrl}/api/location`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: doMap({
         ...payload,
         media,
@@ -344,10 +336,7 @@ class Plugin {
     await request({
       method: 'post',
       uri: `${apiUrl}/api/location`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: {
         ...doMap(payload, locationMapOut),
         locationId,
@@ -367,10 +356,7 @@ class Plugin {
     const resp = await request({
       method: 'post',
       uri: `${apiUrl}/api/company`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: productGet({ locationId }),
       json: true,
     });
@@ -391,10 +377,7 @@ class Plugin {
     const resp = await request({
       method: 'post',
       uri: `${apiUrl}/api/company`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: singleGet,
       json: true,
     });
@@ -436,10 +419,7 @@ class Plugin {
     const resp = request({
       method: 'post',
       uri: `${apiUrl}/api/product`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: {
         locationId,
         ...payload,
@@ -462,10 +442,7 @@ class Plugin {
     await request({
       method: 'post',
       uri: `${apiUrl}/api/product`,
-      headers: {
-        ...getHeaders(apiKey),
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(apiKey),
       body: {
         locationId,
         productId,

@@ -6,7 +6,6 @@ const app = new Plugin();
 
 const token = {
   apiUrl: process.env.ti2_tourconnect_apiUrl,
-  appToken: process.env.ti2_tourconnect_appToken,
 };
 
 const {
@@ -65,13 +64,12 @@ describe('products', () => {
       }),
     ]),
   };
-  let apiKey;
   beforeAll(async () => {
     // create a new location to add products to
     const { jwt } = await createUser();
     // console.log({ user });
     const appKey = await createApp();
-    apiKey = await createAppUser({ appKey, userToken: jwt });
+    token.apiKey = await createAppUser({ appKey, userToken: jwt });
     // create the test location
     const { locationId } = await app.createLocation({ token, payload: testLocation });
     testProduct.locationId = locationId;
