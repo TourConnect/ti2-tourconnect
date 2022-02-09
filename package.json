@@ -16,7 +16,7 @@
     "url": "git+https://github.com/TourConnect/ti2-tourconnect.git"
   },
   "author": "Salvador Aceves",
-  "license": "ISC",
+  "license": "GPLV3",
   "bugs": {
     "url": "https://github.com/TourConnect/ti2-tourconnect/issues"
   },
